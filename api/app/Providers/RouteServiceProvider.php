@@ -28,6 +28,8 @@ class RouteServiceProvider extends ServiceProvider
                         );
                     }
                 );
+
+                Route::post('/webhook/stripe', [\App\Http\Controllers\StripeWebhookController::class, 'handle']);
             }
         );
     }
