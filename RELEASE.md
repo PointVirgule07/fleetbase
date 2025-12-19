@@ -1,26 +1,45 @@
-# 🚀 Fleetbase v0.7.19 — 2025-11-17
+# 🚀 Fleetbase v0.7.23 — 2025-12-19
 
-> "A major leap forward in scheduling, reporting, and user interface capabilities."
+> "🤯 Insane optimization and performance upgrades + horizontal scaling support 🚀"
 
 ---
 
 ## ✨ Highlights
-- **Core Scheduling Module**: A comprehensive, polymorphic, and reusable scheduling system has been integrated into the core API, providing the foundation for a wide range of scheduling applications.
-- **Driver Scheduling with HOS Compliance**: FleetOps now includes built-in compliance for FMCSA Hours of Service regulations.
-- **Computed Columns in Query Builder**: The query builder now supports computed columns, allowing for more complex and powerful data queries with secure expression validation.
-- **Advanced Table Functionality**: The Ember UI table component now supports multi-column sorting, horizontal scrolling, and sticky columns.
-- **New Filter Components**: New filter components for multi-input and range selection have been added to the Ember UI.
-- **Dispatched Flag Control**: The order creation process in FleetOps now allows for explicit control over the dispatch behavior.
-- **Vehicle Attributes Enhancement**: The vehicle model and API resources in FleetOps have been enhanced with additional attributes.
+
+- Major performance and optimization improvements which support horizontal scaling
+- Ability to resize images on upload using resize parameters
+- Several patches in FleetOps - fixed service rates and missing translations, improvements and patch to scheduler
+- Added a new `LanguageService` available in ember-core
+- Minor `@fleetbase/ember-ui` improvements
+
+### New Features
+- **Improved API performance** with two-layer caching system (Redis + ETag validation) for user and organization data
+- **Reduced bandwidth usage** with automatic HTTP 304 Not Modified responses via new ValidateETag middleware
+- **Faster page loads** with intelligent cache invalidation that updates immediately when data changes
+- **New UserCacheService class** for centralized cache management across the application
+- **Image resizing support** for dynamic image dimensions via URL parameters
+- Added `ApiModelCache` class - Provides intelligent Redis-based caching for API query results with automatic invalidation
+- Added `HasApiModelCache` trait - Enables models to cache query results with a single method call
+
+### Performance Improvements
+- Optimized form data syncing to eliminate N+1 query problems, reducing database queries from N to 2 for relationship syncing
+- Implemented cache stampede prevention to handle high concurrent load efficiently
+- Added cache versioning system for automatic invalidation when data changes
+
+### Developer Experience
+- Added `X-Cache-Status` header to API responses for easy cache debugging (HIT/MISS visibility)
+- Automatic multi-tenant cache key generation for company-scoped data isolation
+- Graceful fallback to direct queries when cache is unavailable
 
 ---
 
 ## ⚠️ Breaking Changes
-- None
+- None 🙂
 
 ---
 
 ## 🔧 Upgrade Steps
+
 ```bash
 # Pull latest version
 git pull origin main --no-rebase
@@ -33,5 +52,7 @@ docker compose down && docker compose up -d
 docker compose exec application bash -c "./deploy.sh"
 ```
 
+---
+
 ## Need help? 
-Join the discussion on [GitHub Discussions](https://github.com/fleetbase/fleetbase/discussions) or drop by [#fleetbase on Discord](https://discord.com/invite/HnTqQ6zAVn)
+Join the discussion on [GitHub Discussions](https://github.com/fleetbase/ember-ui/discussions) or drop by [#fleetbase on Discord](https://discord.com/invite/HnTqQ6zAVn)
