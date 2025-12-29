@@ -17,6 +17,9 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->routes(
             function () {
+                Route::middleware('api')
+                    ->group(base_path('routes/api.php'));
+
                 Route::get(
                     '/health',
                     function (Request $request) {
@@ -29,7 +32,7 @@ class RouteServiceProvider extends ServiceProvider
                     }
                 );
 
-                Route::post('/webhook/stripe', [\App\Http\Controllers\StripeWebhookController::class, 'handle']);
+                Route::post('/stripe/webhook', [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']);
             }
         );
     }
