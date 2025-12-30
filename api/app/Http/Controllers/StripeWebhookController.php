@@ -159,29 +159,34 @@ class StripeWebhookController extends Controller
             $apiKey = env('GOOGLE_MAPS_API_KEY');
             
             if ($apiKey && $addressString) {
+                // Log key prefix for debugging (first 5 chars)
+                Log::info("Attempting geocoding with key starting: " . substr($apiKey, 0, 5) . "...");
+
                 try {
                     $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
                         'address' => $addressString,
                         'key' => $apiKey,
                     ]);
 
-                    if ($response->successful()) {
-                        $data = $response->json();
+                    $data = $response->json();
+
+                    if ($response->successful() && isset($data['status']) && $data['status'] === 'OK') {
                         if (!empty($data['results'])) {
                             $location = $data['results'][0]['geometry']['location'];
                             $lat = $location['lat'];
                             $lng = $location['lng'];
                             $place->location = new Point($lat, $lng);
                             Log::info("Geocoded address: {$addressString} to Lat: {$lat}, Lng: {$lng}");
-                        } else {
-                            Log::warning("Geocoding returned no results for address: {$addressString}. Response: " . json_encode($data));
                         }
                     } else {
-                        Log::error('Google Maps Geocoding API failed: ' . $response->body());
+                        Log::error("Geocoding failed for address: {$addressString}");
+                        Log::error('Google Maps API Error: ' . json_encode($data));
                     }
                 } catch (\Exception $e) {
                     Log::error('Geocoding exception: ' . $e->getMessage());
                 }
+            } else {
+                Log::warning('GOOGLE_MAPS_API_KEY is missing in .env or address is empty');
             }
         }
 
