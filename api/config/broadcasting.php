@@ -51,6 +51,18 @@ return [
             'connection' => 'default',
         ],
 
+        'socketcluster' => [
+            'driver' => 'socketcluster',
+            'options' => [
+                'secure' => env('SOCKETCLUSTER_SECURE', false),
+                'host' => env('SOCKETCLUSTER_HOST', 'socket'),
+                'port' => env('SOCKETCLUSTER_PORT', 8000),
+                'path' => env('SOCKETCLUSTER_PATH', '/socketcluster/'),
+                'query' => [],
+                'timeout' => env('SOCKETCLUSTER_TIMEOUT', 5),
+            ],
+        ],
+
         'log' => [
             'driver' => 'log',
         ],

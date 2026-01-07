@@ -88,6 +88,21 @@ services:
         - database
         - cache
 
+  queue-default-2:
+    image: fleetbase/fleetbase-api:latest
+    command: ["php", "artisan", "queue:work", "--queue=default", "--tries=5", "--timeout=120"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "mysql://root@database/fleetbase"
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      CACHE_PATH: /fleetbase/api/storage/framework/cache
+      CACHE_URL: tcp://cache
+      REDIS_URL: tcp://cache
+    depends_on:
+        - database
+        - cache
+
   console:
     image: fleetbase/fleetbase-console:latest
     ports:
