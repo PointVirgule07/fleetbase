@@ -55,13 +55,28 @@ services:
 
   queue:
     image: fleetbase/fleetbase-api:latest
-    command: ["php", "artisan", "queue:work", "--queue=webhooks,default", "--tries=5", "--timeout=120"]
+    command: ["php", "artisan", "queue:work", "--queue=webhooks", "--tries=5", "--timeout=120"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "php", "artisan", "queue:status"]
       interval: 30s
       timeout: 10s
       retries: 3
+    environment:
+      DATABASE_URL: "mysql://root@database/fleetbase"
+      QUEUE_CONNECTION: redis
+      CACHE_DRIVER: redis
+      CACHE_PATH: /fleetbase/api/storage/framework/cache
+      CACHE_URL: tcp://cache
+      REDIS_URL: tcp://cache
+    depends_on:
+        - database
+        - cache
+
+  queue-default:
+    image: fleetbase/fleetbase-api:latest
+    command: ["php", "artisan", "queue:work", "--queue=default", "--tries=5", "--timeout=120"]
+    restart: unless-stopped
     environment:
       DATABASE_URL: "mysql://root@database/fleetbase"
       QUEUE_CONNECTION: redis
