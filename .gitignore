@@ -56,4 +56,5 @@ builds/osx/frankenphp
 *.so
 *.dylib
 *.log
+*.log.*
 data/*

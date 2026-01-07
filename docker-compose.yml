@@ -55,7 +55,7 @@ services:
 
   queue:
     image: fleetbase/fleetbase-api:latest
-    command: ["php", "artisan", "queue:work"]
+    command: ["php", "artisan", "queue:work", "--queue=webhooks,default", "--tries=5", "--timeout=120"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "php", "artisan", "queue:status"]
