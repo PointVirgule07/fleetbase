@@ -23,7 +23,7 @@ module.exports = function (environment) {
         APP: {
             autoboot: true,
             extensions: asArray(getenv('EXTENSIONS')),
-            disableRuntimeConfig: toBoolean(getenv('DISABLE_RUNTIME_CONFIG', environment === 'production')),
+            disableRuntimeConfig: toBoolean(getenv('DISABLE_RUNTIME_CONFIG', false)),
         },
 
         API: {
@@ -39,8 +39,8 @@ module.exports = function (environment) {
         socket: {
             path: getenv('SOCKETCLUSTER_PATH', '/socketcluster/'),
             hostname: getenv('SOCKETCLUSTER_HOST'),
-            secure: toBoolean(getenv('SOCKETCLUSTER_SECURE', false)),
-            port: getenv('SOCKETCLUSTER_PORT', 38000),
+            secure: toBoolean(getenv('SOCKETCLUSTER_SECURE', environment === 'production')),
+            port: getenv('SOCKETCLUSTER_PORT', environment === 'production' ? 443 : 38000),
         },
 
         stripe: {

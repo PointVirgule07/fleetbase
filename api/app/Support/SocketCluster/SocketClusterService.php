@@ -31,9 +31,15 @@ class SocketClusterService extends BaseSocketClusterService
                 return false;
             }
 
+            $this->applyClientTimeout();
+
             $this->client->send($message);
-            $this->response = $this->client->receive();
-            $this->sent     = true;
+            $this->sent = true;
+
+            Log::info('SocketCluster publish succeeded', [
+                'channel' => $channel,
+                'uri'     => $this->uri ?? null,
+            ]);
         } catch (\WebSocket\ConnectionException $exception) {
             $this->error = $exception->getMessage();
         } catch (\WebSocket\TimeoutException $exception) {
@@ -54,6 +60,28 @@ class SocketClusterService extends BaseSocketClusterService
         }
 
         return $this->sent;
+    }
+
+    /**
+     * Apply configured timeout to the underlying client when supported.
+     */
+    protected function applyClientTimeout(): void
+    {
+        if (!isset($this->client)) {
+            return;
+        }
+
+        $timeout = (int) ($this->getOption('timeout') ?? 5);
+
+        if ($timeout > 0 && method_exists($this->client, 'setTimeout')) {
+            try {
+                $this->client->setTimeout($timeout);
+            } catch (\Throwable $exception) {
+                Log::debug('SocketCluster timeout configuration failed', [
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**

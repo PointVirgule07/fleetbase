@@ -1,0 +1,251 @@
+
+services:
+  application:
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://api.exotitse.fr
+      - CONSOLE_HOST=https://console.exotitse.fr
+      - DATABASE_URL=mysql://fleetbase:CHANGE_THIS_PASSWORD@database:3306/fleetbase
+      - REDIS_URL=redis://cache:6379
+      - LOG_CHANNEL=daily
+      - LOG_LEVEL=info
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=exotitse.contact@gmail.com
+      - MAIL_PASSWORD=mlnj bnyz dzxd uyid
+      - MAIL_FROM_NAME=Fleetbase Exotitse
+      - MAIL_FROM_ADDRESS=exotitse.contact@gmail.com
+      - GOOGLE_MAPS_API_KEY=AIzaSyA8OryaQNWf4-B4Dfu1HRnZNC6EbDGcQFU
+      - OSRM_HOST=https://router.project-osrm.org
+    volumes:
+      - /opt/fleetbase/api/.env:/fleetbase/api/.env
+      - /opt/fleetbase/storage/app:/fleetbase/api/storage/app
+      - /opt/fleetbase/storage/logs:/fleetbase/api/storage/logs
+      - /opt/fleetbase/api/app:/fleetbase/api/app
+      - /opt/fleetbase/api/routes:/fleetbase/api/routes
+      - /opt/fleetbase/api/resources:/fleetbase/api/resources
+      - /opt/fleetbase/api/database:/fleetbase/api/database
+      - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - fleetbase-network
+    # ports:
+    #   - "8000:8000"
+
+  console:
+    restart: unless-stopped
+    build:
+      context: ./console
+      dockerfile: Dockerfile
+      args:
+        ENVIRONMENT: production
+    environment:
+      - API_HOST=https://api.exotitse.fr
+      - SOCKETCLUSTER_HOST=api.exotitse.fr
+      - SOCKETCLUSTER_PORT=443
+      - SOCKETCLUSTER_PATH=/socketcluster/
+      - SOCKETCLUSTER_SECURE=true
+      - IS_SECURE=true
+    networks:
+      - fleetbase-network
+
+  database:
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=CHANGE_THIS_ROOT_PASSWORD
+      - MYSQL_DATABASE=fleetbase
+      - MYSQL_USER=fleetbase
+      - MYSQL_PASSWORD=CHANGE_THIS_PASSWORD
+    volumes:
+      - /opt/fleetbase/data/mysql:/var/lib/mysql
+      - /opt/fleetbase/backups/mysql:/backups
+    command: [
+      'mysqld',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_unicode_ci',
+      '--innodb-buffer-pool-size=2G',
+      '--innodb-log-file-size=512M',
+      '--max-connections=300',
+      '--innodb-buffer-pool-instances=2'
+    ]
+    networks:
+      - fleetbase-network
+
+  cache:
+    restart: unless-stopped
+    volumes:
+      - /opt/fleetbase/data/redis:/data
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    networks:
+      - fleetbase-network
+
+  socket:
+    restart: unless-stopped
+    networks:
+      - fleetbase-network
+    expose:
+      - "8000"
+
+  scheduler:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa 'go-crond' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - /opt/fleetbase/storage/logs:/fleetbase/api/storage/logs
+    networks:
+      - fleetbase-network
+
+  queue:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa 'queue:work' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DATABASE_URL=mysql://fleetbase:CHANGE_THIS_PASSWORD@database:3306/fleetbase
+      - REDIS_URL=redis://cache:6379
+      - LOG_CHANNEL=daily
+      - LOG_LEVEL=info
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=exotitse.contact@gmail.com
+      - MAIL_PASSWORD=mlnj bnyz dzxd uyid
+      - MAIL_FROM_NAME=Fleetbase Exotitse
+      - MAIL_FROM_ADDRESS=exotitse.contact@gmail.com
+      - GOOGLE_MAPS_API_KEY=AIzaSyA8OryaQNWf4-B4Dfu1HRnZNC6EbDGcQFU
+      - OSRM_HOST=https://router.project-osrm.org
+    volumes:
+      - /opt/fleetbase/api/.env:/fleetbase/api/.env
+      - /opt/fleetbase/storage/app:/fleetbase/api/storage/app
+      - /opt/fleetbase/storage/logs:/fleetbase/api/storage/logs
+      - /opt/fleetbase/api/app:/fleetbase/api/app
+      - /opt/fleetbase/api/routes:/fleetbase/api/routes
+      - /opt/fleetbase/api/resources:/fleetbase/api/resources
+      - /opt/fleetbase/api/database:/fleetbase/api/database
+      - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=webhooks
+      - --tries=5
+      - --timeout=120
+    networks:
+      - fleetbase-network
+
+  queue-default:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa 'queue:work' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DATABASE_URL=mysql://fleetbase:CHANGE_THIS_PASSWORD@database:3306/fleetbase
+      - REDIS_URL=redis://cache:6379
+      - LOG_CHANNEL=daily
+      - LOG_LEVEL=info
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=exotitse.contact@gmail.com
+      - MAIL_PASSWORD=mlnj bnyz dzxd uyid
+      - MAIL_FROM_NAME=Fleetbase Exotitse
+      - MAIL_FROM_ADDRESS=exotitse.contact@gmail.com
+      - GOOGLE_MAPS_API_KEY=AIzaSyA8OryaQNWf4-B4Dfu1HRnZNC6EbDGcQFU
+      - OSRM_HOST=https://router.project-osrm.org
+    volumes:
+      - /opt/fleetbase/api/.env:/fleetbase/api/.env
+      - /opt/fleetbase/storage/app:/fleetbase/api/storage/app
+      - /opt/fleetbase/storage/logs:/fleetbase/api/storage/logs
+      - /opt/fleetbase/api/app:/fleetbase/api/app
+      - /opt/fleetbase/api/routes:/fleetbase/api/routes
+      - /opt/fleetbase/api/resources:/fleetbase/api/resources
+      - /opt/fleetbase/api/database:/fleetbase/api/database
+      - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=default
+      - --tries=5
+      - --timeout=120
+    networks:
+      - fleetbase-network
+
+  queue-default-2:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa 'queue:work' /proc/1/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DATABASE_URL=mysql://fleetbase:CHANGE_THIS_PASSWORD@database:3306/fleetbase
+      - REDIS_URL=redis://cache:6379
+      - LOG_CHANNEL=daily
+      - LOG_LEVEL=info
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=exotitse.contact@gmail.com
+      - MAIL_PASSWORD=mlnj bnyz dzxd uyid
+      - MAIL_FROM_NAME=Fleetbase Exotitse
+      - MAIL_FROM_ADDRESS=exotitse.contact@gmail.com
+      - GOOGLE_MAPS_API_KEY=AIzaSyA8OryaQNWf4-B4Dfu1HRnZNC6EbDGcQFU
+      - OSRM_HOST=https://router.project-osrm.org
+    volumes:
+      - /opt/fleetbase/api/.env:/fleetbase/api/.env
+      - /opt/fleetbase/storage/app:/fleetbase/api/storage/app
+      - /opt/fleetbase/storage/logs:/fleetbase/api/storage/logs
+      - /opt/fleetbase/api/app:/fleetbase/api/app
+      - /opt/fleetbase/api/routes:/fleetbase/api/routes
+      - /opt/fleetbase/api/resources:/fleetbase/api/resources
+      - /opt/fleetbase/api/database:/fleetbase/api/database
+      - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --queue=default
+      - --tries=5
+      - --timeout=120
+    networks:
+      - fleetbase-network
+
+  httpd:
+    networks:
+      - fleetbase-network
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt/live/api.exotitse.fr/fullchain.pem:/etc/nginx/ssl/api.exotitse.fr.crt:ro
+      - /etc/letsencrypt/live/api.exotitse.fr/privkey.pem:/etc/nginx/ssl/api.exotitse.fr.key:ro
+
+networks:
+  fleetbase-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local

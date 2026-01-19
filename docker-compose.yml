@@ -29,14 +29,14 @@ services:
     image: socketcluster/socketcluster:v17.4.0
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - "38000:8000"
     environment:
       SOCKETCLUSTER_WORKERS: 10
       SOCKETCLUSTER_BROKERS: 10
       # SOCKETCLUSTER_OPTIONS can be set via docker-compose.override.yml for specific environments
       # For production, use: SOCKETCLUSTER_OPTIONS: '{"origins":"https://yourdomain.com:*"}'
       # For development, use: SOCKETCLUSTER_OPTIONS: '{"origins":"http://localhost:*"}'
+    expose:
+      - "8000"
 
   scheduler:
     image: fleetbase/fleetbase-api:latest
@@ -134,12 +134,12 @@ services:
       - database
       - cache
       - queue
+    expose:
+      - "8000"
 
   httpd:
     build:
       context: .
       dockerfile: docker/httpd/Dockerfile
-    ports:
-      - "8000:80"
     depends_on:
       - application

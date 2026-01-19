@@ -8,6 +8,99 @@
     <meta name="theme-color" content="#ffffff" />
     <title>Fleetbase Console</title>
 
+    <script>
+    (function() {
+        // --- 1. Global Interceptor for window.socketCluster ---
+        var _socketCluster = undefined;
+        Object.defineProperty(window, 'socketCluster', {
+            get: function() { return _socketCluster; },
+            set: function(val) {
+                _socketCluster = val;
+                if (val && val.create && !val.create._isPatched) {
+                    // Patch immediately
+                    patchCreate(val);
+                }
+            },
+            configurable: true
+        });
+
+        // --- 2. AMD Interceptor for 'socketcluster-client' module ---
+        var originalDefine = window.define;
+        // We might run before loader.js (which defines 'define'), so we wait for it or shim it.
+        // Actually, loader.js is in vendor.js, which runs AFTER this script (in body or head).
+        // But some scripts might load async.
+        
+        // Define a proxy for 'define' that we will assign to window.define
+        // Once loader.js loads, it will likely overwrite window.define.
+        // We need to use Object.defineProperty to catch when loader.js tries to set 'define'
+        
+        var _realDefine = undefined;
+        
+        Object.defineProperty(window, 'define', {
+            get: function() { return _realDefine; },
+            set: function(val) {
+                // This 'val' is the real 'define' function from loader.js (or requirejs)
+                _realDefine = function(name, deps, callback) {
+                    // Check if this is the socketcluster module
+                    // The minified file often calls define(function() { ... }) (anonymous)
+                    // or define('socketcluster-client', [], function() { ... })
+                    
+                    // If it is anonymous, we can't easily know unless we check the script source, 
+                    // but usually libraries check for define.amd.
+                    
+                    // We will wrap the callback
+                    var wrappedCallback = callback;
+                    if (typeof callback === 'function') {
+                        wrappedCallback = function() {
+                            var moduleExports = callback.apply(this, arguments);
+                            if (moduleExports && moduleExports.create) {
+                                patchCreate(moduleExports);
+                            }
+                            return moduleExports;
+                        };
+                    }
+                    
+                    return val(name, deps, wrappedCallback);
+                };
+                
+                // Copy properties (like .amd)
+                for (var key in val) {
+                    _realDefine[key] = val[key];
+                }
+            },
+            configurable: true
+        });
+
+        function patchCreate(scObject) {
+            if (scObject.create._isPatched) return;
+            
+            var originalCreate = scObject.create;
+            scObject.create = function(options) {
+                options = options || {};
+                
+                // Inject authToken
+                if (!options.authToken) {
+                    try {
+                        var sessionData = localStorage.getItem('ember_simple_auth-session');
+                        if (sessionData) {
+                            var parsed = JSON.parse(sessionData);
+                            if (parsed.authenticated && parsed.authenticated.access_token) {
+                                options.authToken = parsed.authenticated.access_token;
+                                // console.log('[SocketPatch] Injected Token via AMD/Global Interceptor');
+                            }
+                        }
+                    } catch (e) {
+                         // console.error('[SocketPatch] Error parsing session', e);
+                    }
+                }
+                
+                return originalCreate.call(this, options);
+            };
+            scObject.create._isPatched = true;
+        }
+    })();
+    </script>
+
     {{content-for "head"}}
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />

@@ -139,16 +139,28 @@ class ProcessStripeWebhook implements ShouldQueue
 
     protected function getTargetCompany()
     {
-        $id = env('STRIPE_TARGET_COMPANY_ID');
-        if (!$id) {
+        $identifier = env('STRIPE_TARGET_COMPANY_ID');
+        if (!$identifier) {
              throw new \Exception("STRIPE_TARGET_COMPANY_ID is not configured");
         }
-        
-        $company = Company::where('id', $id)->first();
-        if (!$company) {
-             throw new \Exception("Company with ID {$id} not found");
+
+        if (Str::isUuid($identifier)) {
+            $company = Company::where('uuid', $identifier)->first();
+        } elseif (Str::startsWith($identifier, 'company_')) {
+            $company = Company::where('public_id', $identifier)->first();
+        } elseif (is_numeric($identifier)) {
+            $company = Company::where('id', (int) $identifier)->first();
+        } else {
+            $company = Company::where('id', $identifier)
+                ->orWhere('uuid', $identifier)
+                ->orWhere('public_id', $identifier)
+                ->first();
         }
-        
+
+        if (!$company) {
+             throw new \Exception("Company with identifier {$identifier} not found");
+        }
+
         return $company;
     }
 
@@ -160,6 +172,7 @@ class ProcessStripeWebhook implements ShouldQueue
         // Get hardcoded company
         $company = $this->getTargetCompany();
         $companyUuid = $company->uuid;
+        $companyPublicId = $company->public_id ?? null;
 
         Log::info("Processing checkout session logic for: {$sessionId} under Company: {$companyUuid}");
 
@@ -288,19 +301,20 @@ class ProcessStripeWebhook implements ShouldQueue
         // Manually invalidate API cache to ensure the order is visible on the dashboard immediately
         try {
             ApiModelCache::invalidateModelCache($order, $companyUuid);
+
+            if ($companyPublicId && $companyPublicId !== $companyUuid) {
+                ApiModelCache::invalidateModelCache($order, $companyPublicId);
+            }
         } catch (\Exception $e) {
             Log::warning("Cache invalidation failed: " . $e->getMessage());
         }
 
-        // Broadcast OrderReady event only when explicitly enabled to avoid socket timeouts
-        if (env('ENABLE_ORDER_READY_BROADCAST', false)) {
-            try {
-                event(new OrderReady($order));
-            } catch (\Exception $e) {
-                Log::warning('Event broadcast failed: ' . $e->getMessage());
-            }
-        } else {
-            Log::info('Skipping OrderReady broadcast; ENABLE_ORDER_READY_BROADCAST is disabled.');
+        // Broadcast OrderReady event
+        try {
+            event(new OrderReady($order));
+            Log::info("Dispatched OrderReady event for {$order->public_id}");
+        } catch (\Exception $e) {
+            Log::warning('OrderReady broadcast failed: ' . $e->getMessage());
         }
 
         Log::info("Order created successfully: {$order->public_id} for Company: {$companyUuid}");
